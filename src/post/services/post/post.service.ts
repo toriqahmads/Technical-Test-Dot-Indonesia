@@ -10,76 +10,84 @@ import { PostMapperServiceService } from '../post-mapper-service/post-mapper-ser
 
 @Injectable()
 export class PostService {
-    public constructor(
-        @InjectRepository(Post) private readonly postRepository: Repository<Post>,
-        private readonly postMapper: PostMapperServiceService,
-        private readonly postApi: PostApi
-    ) {}
+  public constructor(
+    @InjectRepository(Post) private readonly postRepository: Repository<Post>,
+    private readonly postMapper: PostMapperServiceService,
+    private readonly postApi: PostApi,
+  ) {}
 
-    public async findAll(): Promise<PostDto[]> {
-        const posts = await this.postApi.find();
-        await Promise.all(posts.map(async(post: PostDto) => {
-            await this.postRepository.save(post);
-        }));
+  public async findAll(): Promise<PostDto[]> {
+    const posts = await this.postApi.find();
+    await Promise.all(
+      posts.map(async (post: PostDto) => {
+        await this.postRepository.save(post);
+      }),
+    );
 
-        return posts.map(this.postMapper.modelToDto);
+    return posts.map(this.postMapper.modelToDto);
+  }
+
+  public async findOne(id: number): Promise<PostDto> {
+    let post = await this.postRepository.findOne(id);
+    if (isNullOrUndefined(post)) {
+      post = await this.postApi.findOne(id);
+      if (isNullOrUndefined(post)) throw new NotFoundException();
+
+      await this.postRepository.save(post);
     }
 
-    public async findOne(id: number): Promise<PostDto> {
-        let post = await this.postRepository.findOne(id);
-        if (isNullOrUndefined(post)) {
-            post = await this.postApi.findOne(id);
-            if (isNullOrUndefined(post)) throw new NotFoundException();
+    return this.postMapper.modelToDto(post);
+  }
 
-            await this.postRepository.save(post);
-        }
+  public async add({ title, body, userId }: AddPostDto): Promise<PostDto> {
+    let post = new Post(title, body, userId);
+    await this.postApi.add(post);
+    post = await this.postRepository.save(post);
 
-        return this.postMapper.modelToDto(post);
-    }
+    return this.postMapper.modelToDto(post);
+  }
 
-    public async add({ title, body, userId }: AddPostDto): Promise<PostDto> {
-        let post = new Post(title, body, userId);
-        await this.postApi.add(post);
-        post = await this.postRepository.save(post);
+  public async editPut(
+    id: number,
+    { title, body, userId }: EditPutPostDto,
+  ): Promise<PostDto> {
+    let post = await this.postRepository.findOne(id);
+    if (isNullOrUndefined(post)) throw new NotFoundException();
 
-        return this.postMapper.modelToDto(post);
-    }
+    post.title = title;
+    post.body = body;
+    post.userId = userId;
 
-    public async editPut(id: number, { title, body, userId }: EditPutPostDto): Promise<PostDto> {
-        let post = await this.postRepository.findOne(id);
-        if (isNullOrUndefined(post)) throw new NotFoundException();
+    await this.postApi.editPut(id, post);
+    post = await this.postRepository.save(post);
 
-        post.title = title;
-        post.body = body;
-        post.userId = userId;
+    return this.postMapper.modelToDto(post);
+  }
 
-        await this.postApi.editPut(id, post);
-        post = await this.postRepository.save(post);
+  public async edit(
+    id: number,
+    { title, body, userId }: EditPostDto,
+  ): Promise<PostDto> {
+    let post = await this.postRepository.findOne(id);
+    if (isNullOrUndefined(post)) throw new NotFoundException();
 
-        return this.postMapper.modelToDto(post);
-    }
+    if (!isNullOrUndefined(title)) post.title = title;
+    if (!isNullOrUndefined(body)) post.body = body;
+    if (!isNullOrUndefined(userId)) post.userId = userId;
 
-    public async edit(id: number, { title, body, userId }: EditPostDto): Promise<PostDto> {
-        let post = await this.postRepository.findOne(id);
-        if (isNullOrUndefined(post)) throw new NotFoundException();
+    await this.postApi.edit(id, post);
+    post = await this.postRepository.save(post);
 
-        if (!isNullOrUndefined(title)) post.title = title;
-        if (!isNullOrUndefined(body)) post.body = body;
-        if (!isNullOrUndefined(userId)) post.userId = userId;
+    return this.postMapper.modelToDto(post);
+  }
 
-        await this.postApi.edit(id, post);
-        post = await this.postRepository.save(post);
+  public async remove(id: number): Promise<PostDto> {
+    let post = await this.postRepository.findOne(id);
+    if (isNullOrUndefined(post)) throw new NotFoundException();
 
-        return this.postMapper.modelToDto(post);
-    }
+    await this.postApi.remove(id);
+    post = await this.postRepository.remove(post);
 
-    public async remove(id: number): Promise<PostDto> {
-        let post = await this.postRepository.findOne(id);
-        if (isNullOrUndefined(post)) throw new NotFoundException();
-
-        await this.postApi.remove(id);
-        post = await this.postRepository.remove(post); 
-        
-        return this.postMapper.modelToDto(post);
-    }
+    return this.postMapper.modelToDto(post);
+  }
 }

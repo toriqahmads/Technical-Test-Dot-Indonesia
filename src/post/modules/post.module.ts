@@ -7,11 +7,8 @@ import { PostService } from '../services/post/post.service';
 import { PostMapperServiceService } from '../services/post-mapper-service/post-mapper-service.service';
 
 @Module({
-    imports: [
-        TypeOrmModule.forFeature([Post]),
-    ],
-    providers: [PostService, PostMapperServiceService, PostApi],
-    controllers: [PostController]
+  imports: [TypeOrmModule.forFeature([Post])],
+  providers: [PostService, PostMapperServiceService, PostApi],
+  controllers: [PostController],
 })
-
 export class PostModule {}
